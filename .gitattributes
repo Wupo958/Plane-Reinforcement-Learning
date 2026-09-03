@@ -1,0 +1,26 @@
+* text=auto
+
+# Unity text assets: keep LF, never merge automatically
+*.meta       -merge text eol=lf
+*.unity      -merge text eol=lf
+*.prefab     -merge text eol=lf
+*.asset      -merge text eol=lf
+*.mat        -merge text eol=lf
+*.anim       -merge text eol=lf
+*.controller -merge text eol=lf
+*.physicMaterial -merge text eol=lf
+
+# Binary assets
+*.fbx  binary
+*.obj  binary
+*.blend binary
+*.png  binary
+*.jpg  binary
+*.psd  binary
+*.tga  binary
+*.wav  binary
+*.mp3  binary
+*.ogg  binary
+*.ttf  binary
+*.dll  binary
+*.onnx binary
