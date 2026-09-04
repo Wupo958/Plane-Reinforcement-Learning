@@ -1,0 +1,18 @@
+# ML-Agents training environment (Python 3.10.x only — mlagents pins >=3.10.1,<=3.10.12)
+#
+#   uv venv --python 3.10 venv
+#   uv pip install --python venv -r requirements.txt
+#
+# or without uv:
+#   py -3.10 -m venv venv
+#   venv\Scripts\activate
+#   pip install -r requirements.txt
+
+mlagents==1.1.0          # matches com.unity.ml-agents 4.1.0 (communicator API 1.5.0)
+torch==2.2.2             # CPU build; see note below for CUDA
+setuptools<81            # 81+ removed pkg_resources, which mlagents.torch_utils imports
+
+# For CUDA (RTX 4070) instead of the CPU build, replace the torch line above by running:
+#   uv pip install --python venv torch==2.2.2 --index-url https://download.pytorch.org/whl/cu121
+# Not recommended for this project: the PPO net here is 2x256, so CPU is
+# typically as fast or faster. Only worth it if you add camera/visual observations.
