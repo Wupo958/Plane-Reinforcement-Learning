@@ -20,6 +20,9 @@ public class PrototypeAgentScript : Agent
     float yawControlSensitivity = 0.2f;
 
     [SerializeField]
+    bool verboseLogging = false;
+
+    [SerializeField]
     GameObject[] checkpoints;
 
     [SerializeField]
@@ -54,6 +57,7 @@ public class PrototypeAgentScript : Agent
     {
         aircraftPhysics = GetComponent<AircraftPhysics>();
         rb = GetComponent<Rigidbody>();
+        Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
     }
 
     private void SelectCheckpoint(int index)
@@ -69,6 +73,7 @@ public class PrototypeAgentScript : Agent
         rb.angularVelocity = Vector3.zero;
         transform.localPosition = new Vector3(0, 0, -690);
         transform.localRotation = Quaternion.identity;
+        Academy.Instance.StatsRecorder.Add("Checkpoints/PerEpisode", checkpointAmount);
         checkpointAmount = 0;
         SelectCheckpoint(0);
     }
@@ -92,6 +97,14 @@ public class PrototypeAgentScript : Agent
         dirToTarget = transform.InverseTransformDirection(activeCheckpoint.transform.position - transform.position);
     }
 
+    // Called if the trainer connection drops. Without an override, ML-Agents logs a
+    // stack-traced warning every step per agent, which floods the Editor log.
+    public override void Heuristic(in ActionBuffers actionsOut)
+    {
+        actionsOut.ContinuousActions.Clear();
+        actionsOut.DiscreteActions.Clear();
+    }
+
     public override void OnActionReceived(ActionBuffers actions)
     {
         var c = actions.ContinuousActions;
@@ -110,7 +123,7 @@ public class PrototypeAgentScript : Agent
     private void GiveRewards()
     {
         float dist = Vector3.Distance(transform.position, activeCheckpoint.transform.position);
-        AddReward((prevDist - dist) * 0.0001f);
+        AddReward((prevDist - dist) * 0.001f);
         prevDist = dist;
     }
 
@@ -120,7 +133,7 @@ public class PrototypeAgentScript : Agent
 
         AddReward(1f);
         checkpointAmount++;
-        print($"Plane collected {checkpointAmount} checkpoints in a row");
+        if (verboseLogging) print($"Plane collected {checkpointAmount} checkpoints in a row");
 
         int offset = Random.Range(1, checkpoints.Length);
         SelectCheckpoint((activeIndex + offset) % checkpoints.Length);
@@ -193,6 +206,6 @@ public class PrototypeAgentScript : Agent
     {
         SetReward(-1f);
         EndEpisode();
-        print("Plane hit the ground");
+        if (verboseLogging) print("Plane hit the ground");
     }
 }

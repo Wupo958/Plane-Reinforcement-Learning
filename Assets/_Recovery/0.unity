@@ -458,7 +458,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &215347369
@@ -1841,7 +1841,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &433905418
@@ -2418,7 +2418,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &624744689
@@ -3152,7 +3152,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &791464259
@@ -3498,7 +3498,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &926702019
@@ -3618,7 +3618,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &935625958
@@ -3749,7 +3749,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &972384813
@@ -4281,7 +4281,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &1171046123
@@ -4657,7 +4657,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &1338757736
@@ -5021,7 +5021,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &1494137202 stripped
@@ -5204,7 +5204,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &1649108115
@@ -5472,7 +5472,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &1692305900
@@ -5724,7 +5724,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &1709020359
@@ -6141,7 +6141,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &1779545429
@@ -6239,7 +6239,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &1781892166
@@ -6471,7 +6471,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &1832894121
@@ -6712,7 +6712,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &1844705737
@@ -6886,7 +6886,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &1964876778
@@ -7287,7 +7287,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
+  DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
 --- !u!114 &2017646947
