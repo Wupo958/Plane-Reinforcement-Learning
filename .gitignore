@@ -68,3 +68,20 @@ Thumbs.db
 /venv/
 __pycache__/
 *.py[cod]
+
+# Map generator byproducts
+/AssetBounds.txt
+/MapPreviews/
+
+# Map generator output: 1.09 GB of YAML mesh data, rebuilt deterministically from
+# Seed 20260916 by the "Terrain Map/Build World Scene" menu item.
+/Assets/3. Terrain Agent/Generated/
+/Assets/3. Terrain Agent/Generated.meta
+
+# Training logs and editor backups
+*.log
+*.bak
+
+# ML-Agents writes a fresh timer file per run
+/Assets/ML-Agents/Timers/
+/Assets/ML-Agents/Timers.meta
