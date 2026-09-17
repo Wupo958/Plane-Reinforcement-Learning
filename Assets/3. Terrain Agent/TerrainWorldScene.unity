@@ -175601,7 +175601,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 72a6530766d7d31408f5b4a28deeb519, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GenerationManager
-  mapRebuildInterval: 25
+  mapRebuildInterval: 1
   mapBuilder: {fileID: 1266368625}
   gatePlacementHalfExtent: 2900
   gateMinAltitude: 45
