@@ -101,7 +101,7 @@ public class MapHeightField
     public List<MapFlatten> flattens = new List<MapFlatten>();
     public List<MapPaint> paints = new List<MapPaint>();
 
-    private Vector2[] mainRidge = new Vector2[]
+    public Vector2[] mainRidge = new Vector2[]
     {
         new Vector2(-3100f, 2750f),
         new Vector2(-2450f, 900f),
@@ -109,7 +109,7 @@ public class MapHeightField
         new Vector2(-950f, -1950f)
     };
 
-    private Vector2[] northRidge = new Vector2[]
+    public Vector2[] northRidge = new Vector2[]
     {
         new Vector2(-200f, 3150f),
         new Vector2(900f, 2900f),
@@ -117,7 +117,7 @@ public class MapHeightField
         new Vector2(2700f, 1650f)
     };
 
-    private Vector2[] river = new Vector2[]
+    public Vector2[] river = new Vector2[]
     {
         new Vector2(-1000f, 1050f),
         new Vector2(-760f, 640f),
@@ -128,7 +128,7 @@ public class MapHeightField
         new Vector2(-570f, -1700f)
     };
 
-    private Vector2[] bay = new Vector2[]
+    public Vector2[] bay = new Vector2[]
     {
         new Vector2(-480f, -3700f),
         new Vector2(-560f, -2700f),
@@ -136,7 +136,12 @@ public class MapHeightField
         new Vector2(-590f, -1650f)
     };
 
-    private Vector2 lakeCenter = new Vector2(-1000f, 1050f);
+    public Vector2 lakeCenter = new Vector2(-1000f, 1050f);
+
+    // Every noise lookup below is a pure function of position, so without an offset per seed the
+    // identical landscape came out of every rebuild and only the scattered props moved.
+    public float noiseOffsetX;
+    public float noiseOffsetZ;
 
     public float WorldSize()
     {
@@ -151,17 +156,21 @@ public class MapHeightField
     public float NaturalHeight(float x, float z)
     {
         float radial = Mathf.Sqrt(x * x + z * z) / 3500f;
+        // Deliberately NOT offset by the seed. This term decides where the coastline falls, and
+        // the airport is pinned at a fixed spot that sits right on that transition, so moving the
+        // coast drops the runway into the sea roughly half the time and shrinks the buildable
+        // land. The hills, detail, ridges, river, bay and lake below all still move per seed.
         float coast = MapNoise.Fbm(x, z, 1f / 1500f, 3, 11.3f, 47.7f) - 0.5f;
         float shaped = radial + coast * 0.42f;
         float continent = 1f - MapNoise.SmoothStep(0.62f, 1.02f, shaped);
 
         float height = Mathf.Lerp(-88f, 40f, continent);
 
-        float hills = (MapNoise.Fbm(x, z, 1f / 900f, 4, 131.7f, 57.2f) - 0.35f) * 82f;
+        float hills = (MapNoise.Fbm(x, z, 1f / 900f, 4, 131.7f + noiseOffsetX, 57.2f + noiseOffsetZ) - 0.35f) * 82f;
         height += hills * continent;
         height += MountainHeight(x, z) * continent;
 
-        float detail = (MapNoise.Fbm(x, z, 1f / 230f, 3, 311.5f, 88.9f) - 0.5f) * 11f;
+        float detail = (MapNoise.Fbm(x, z, 1f / 230f, 3, 311.5f + noiseOffsetX, 88.9f + noiseOffsetZ) - 0.5f) * 11f;
         height += detail * continent;
 
         height = CarveLake(x, z, height);
@@ -176,12 +185,12 @@ public class MapHeightField
 
         float mainDistance = MapNoise.DistanceToPolyline(point, mainRidge);
         float mainBand = 1f - MapNoise.SmoothStep(320f, 2150f, mainDistance);
-        float mainRidgeNoise = MapNoise.Ridge(x, z, 1f / 1250f, 4, 9.1f, 73.4f);
+        float mainRidgeNoise = MapNoise.Ridge(x, z, 1f / 1250f, 4, 9.1f + noiseOffsetX, 73.4f + noiseOffsetZ);
         float mainHeight = mainBand * mainBand * mainRidgeNoise * 455f;
 
         float northDistance = MapNoise.DistanceToPolyline(point, northRidge);
         float northBand = 1f - MapNoise.SmoothStep(380f, 1650f, northDistance);
-        float northRidgeNoise = MapNoise.Ridge(x, z, 1f / 820f, 3, 143.6f, 201.9f);
+        float northRidgeNoise = MapNoise.Ridge(x, z, 1f / 820f, 3, 143.6f + noiseOffsetX, 201.9f + noiseOffsetZ);
         float northHeight = northBand * northBand * (0.32f + northRidgeNoise * 0.68f) * 425f;
 
         return Mathf.Max(mainHeight, northHeight);
@@ -190,7 +199,7 @@ public class MapHeightField
     private float CarveLake(float x, float z, float height)
     {
         float distance = Vector2.Distance(new Vector2(x, z), lakeCenter);
-        distance += (MapNoise.Fbm(x, z, 1f / 340f, 2, 77.2f, 133.8f) - 0.5f) * 170f;
+        distance += (MapNoise.Fbm(x, z, 1f / 340f, 2, 77.2f + noiseOffsetX, 133.8f + noiseOffsetZ) - 0.5f) * 170f;
         float t = 1f - MapNoise.SmoothStep(430f, 760f, distance);
         return Mathf.Lerp(height, -30f, t);
     }
@@ -198,7 +207,7 @@ public class MapHeightField
     private float CarveBay(float x, float z, float height)
     {
         float distance = MapNoise.DistanceToPolyline(new Vector2(x, z), bay);
-        distance += (MapNoise.Fbm(x, z, 1f / 420f, 2, 301.4f, 12.6f) - 0.5f) * 280f;
+        distance += (MapNoise.Fbm(x, z, 1f / 420f, 2, 301.4f + noiseOffsetX, 12.6f + noiseOffsetZ) - 0.5f) * 280f;
         float t = 1f - MapNoise.SmoothStep(330f, 1150f, distance);
         return Mathf.Lerp(height, -42f, t);
     }
@@ -206,7 +215,7 @@ public class MapHeightField
     private float CarveRiver(float x, float z, float height)
     {
         float distance = MapNoise.DistanceToPolyline(new Vector2(x, z), river);
-        distance += (MapNoise.Fbm(x, z, 1f / 260f, 2, 401.7f, 55.1f) - 0.5f) * 30f;
+        distance += (MapNoise.Fbm(x, z, 1f / 260f, 2, 401.7f + noiseOffsetX, 55.1f + noiseOffsetZ) - 0.5f) * 30f;
         float t = 1f - MapNoise.SmoothStep(40f, 210f, distance);
         return Mathf.Lerp(height, -7f, t);
     }
