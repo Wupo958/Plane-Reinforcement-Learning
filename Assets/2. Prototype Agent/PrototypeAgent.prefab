@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 459224113428530287}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Aerodynamics
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -51,7 +51,7 @@ GameObject:
   - component: {fileID: 6646926846913096353}
   - component: {fileID: 7152579319283785371}
   - component: {fileID: 1776266315732858714}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Gear_Front
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -143,7 +143,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8290260153508219723}
   - component: {fileID: 5912744595549152794}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Body_1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -190,7 +190,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6723305254752086991}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: CameraFollowCenter
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -223,8 +223,10 @@ GameObject:
   - component: {fileID: 657408287243008465}
   - component: {fileID: 1711393638121530109}
   - component: {fileID: 4204139944074590058}
-  - component: {fileID: 2879011328430918789}
-  m_Layer: 0
+  - component: {fileID: 4900837028220134646}
+  - component: {fileID: 2678397841836427354}
+  - component: {fileID: 2819907654497571028}
+  m_Layer: 3
   m_Name: PrototypeAgent
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -248,6 +250,7 @@ Transform:
   - {fileID: 459224113428530287}
   - {fileID: 6643309519921634487}
   - {fileID: 6723305254752086991}
+  - {fileID: 2488178326407729333}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!54 &1711393638121530109
@@ -300,7 +303,7 @@ MonoBehaviour:
   - {fileID: 6760585281331375795}
   - {fileID: 5912744595549152794}
   - {fileID: 1166791527608332791}
---- !u!114 &2879011328430918789
+--- !u!114 &4900837028220134646
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -309,9 +312,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 3346756244700952320}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1b2e651fb6e03814ca392bbc92616e00, type: 3}
+  m_Script: {fileID: 11500000, guid: 99636c1111d239a4a9f0ba83fe538d24, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrototypeAgentScript
+  agentParameters:
+    maxStep: 0
+  hasUpgradedFromAgentParameters: 1
+  MaxStep: 10000
   controlSurfaces:
   - {fileID: 6273141366302585820}
   - {fileID: 2422700648445481762}
@@ -326,12 +333,70 @@ MonoBehaviour:
   - {fileID: 1533773957970703019}
   rollControlSensitivity: 0.15
   pitchControlSensitivity: 0.25
-  yawControlSensitivity: 0.4
+  yawControlSensitivity: 0.15
+  verboseLogging: 0
+  checkpoints:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  groundProbeDistance: 0.5
+  groundProbeUpOffset: 1
+  groundProbeMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
   Pitch: 0
   Yaw: 0
   Roll: 0
   Flap: 0
-  displayText: {fileID: 0}
+  thrustPercent: 0
+--- !u!114 &2678397841836427354
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3346756244700952320}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d1c4e0b1822b495aa52bc52839ecb30, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.Policies.BehaviorParameters
+  m_BrainParameters:
+    VectorObservationSize: 19
+    NumStackedVectorObservations: 1
+    m_ActionSpec:
+      m_NumContinuousActions: 4
+      BranchSizes: 02000000
+    VectorActionSize: 
+    VectorActionDescriptions: []
+    VectorActionSpaceType: 0
+    hasUpgradedBrainParametersWithActionSpec: 1
+  m_Model: {fileID: 5022602860645237092, guid: 328d181e4d168264fa73014ce0cbca04, type: 3}
+  m_InferenceDevice: 0
+  m_BehaviorType: 0
+  m_BehaviorName: airplanePrototype
+  TeamId: 0
+  m_UseChildSensors: 1
+  m_UseChildActuators: 1
+  m_DeterministicInference: 0
+  m_ObservableAttributeHandling: 0
+--- !u!114 &2819907654497571028
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3346756244700952320}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
+  DecisionPeriod: 5
+  DecisionStep: 0
+  TakeActionsBetweenDecisions: 1
 --- !u!1 &4104871909365066826
 GameObject:
   m_ObjectHideFlags: 0
@@ -341,7 +406,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6643309519921634487}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Visuals
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -374,7 +439,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6044061901645506995}
   - component: {fileID: 6273141366302585820}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Wing_L_1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -412,6 +477,143 @@ MonoBehaviour:
   IsControlSurface: 1
   InputType: 2
   InputMultiplyer: 1
+--- !u!1 &4957519233627501089
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2488178326407729333}
+  - component: {fileID: 7069889254508655881}
+  - component: {fileID: 3172202937300962958}
+  - component: {fileID: 4108920813568951585}
+  m_Layer: 3
+  m_Name: Main Camera
+  m_TagString: MainCamera
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2488178326407729333
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4957519233627501089}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 5, z: -12}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 657408287243008465}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!20 &7069889254508655881
+Camera:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4957519233627501089}
+  m_Enabled: 1
+  serializedVersion: 2
+  m_ClearFlags: 1
+  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_projectionMatrixMode: 1
+  m_GateFitMode: 2
+  m_FOVAxisMode: 0
+  m_Iso: 200
+  m_ShutterSpeed: 0.005
+  m_Aperture: 16
+  m_FocusDistance: 10
+  m_FocalLength: 50
+  m_BladeCount: 5
+  m_Curvature: {x: 2, y: 11}
+  m_BarrelClipping: 0.25
+  m_Anamorphism: 0
+  m_SensorSize: {x: 36, y: 24}
+  m_LensShift: {x: 0, y: 0}
+  m_NormalizedViewPortRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 1
+    height: 1
+  near clip plane: 0.3
+  far clip plane: 1000
+  field of view: 60
+  orthographic: 0
+  orthographic size: 5
+  m_Depth: -1
+  m_CullingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_RenderingPath: -1
+  m_TargetTexture: {fileID: 0}
+  m_TargetDisplay: 0
+  m_TargetEye: 3
+  m_HDR: 1
+  m_AllowMSAA: 1
+  m_AllowDynamicResolution: 0
+  m_ForceIntoRT: 0
+  m_OcclusionCulling: 1
+  m_StereoConvergence: 10
+  m_StereoSeparation: 0.022
+--- !u!81 &3172202937300962958
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4957519233627501089}
+  m_Enabled: 1
+--- !u!114 &4108920813568951585
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4957519233627501089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_RenderShadows: 1
+  m_RequiresDepthTextureOption: 2
+  m_RequiresOpaqueTextureOption: 2
+  m_CameraType: 0
+  m_Cameras: []
+  m_RendererIndex: -1
+  m_VolumeLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  m_VolumeTrigger: {fileID: 0}
+  m_VolumeFrameworkUpdateModeOption: 2
+  m_RenderPostProcessing: 1
+  m_Antialiasing: 0
+  m_AntialiasingQuality: 2
+  m_StopNaN: 0
+  m_Dithering: 0
+  m_ClearDepth: 1
+  m_AllowXRRendering: 1
+  m_AllowHDROutput: 1
+  m_UseScreenCoordOverride: 0
+  m_ScreenSizeOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
+  m_RequiresDepthTexture: 0
+  m_RequiresColorTexture: 0
+  m_TaaSettings:
+    m_Quality: 3
+    m_FrameInfluence: 0.1
+    m_JitterScale: 1
+    m_MipBias: 0
+    m_VarianceClampScale: 0.9
+    m_ContrastAdaptiveSharpening: 0
+  m_Version: 2
 --- !u!1 &5010740910937539551
 GameObject:
   m_ObjectHideFlags: 0
@@ -423,7 +625,7 @@ GameObject:
   - component: {fileID: 958224156299337588}
   - component: {fileID: 1961322675619238359}
   - component: {fileID: 1533773957970703019}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Gear_Right
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -515,7 +717,7 @@ GameObject:
   m_Component:
   - component: {fileID: 176648998583917828}
   - component: {fileID: 6760585281331375795}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Tail_V
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -563,7 +765,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1612176324509704889}
   - component: {fileID: 4720362903426749567}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Tail_H_L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -615,7 +817,7 @@ GameObject:
   - component: {fileID: 8529272641480680680}
   - component: {fileID: 3138089308487530552}
   - component: {fileID: 1081811057216923328}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Collision
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -759,7 +961,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5213040841240441602}
   - component: {fileID: 2422700648445481762}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Wing_R_1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -807,7 +1009,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5683172678508960312}
   - component: {fileID: 8315898094293591490}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Wing_L_0
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -855,7 +1057,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3743514937080514825}
   - component: {fileID: 8947069366489065310}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Wing_R_0
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -903,7 +1105,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3075396211075043958}
   - component: {fileID: 1166791527608332791}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Body_2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -952,7 +1154,7 @@ GameObject:
   - component: {fileID: 5280151647327725287}
   - component: {fileID: 5461782405603411926}
   - component: {fileID: 85212868141530362}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Gear_Left
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1044,7 +1246,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7973948849335502013}
   - component: {fileID: 6374817355109754424}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Tail_H_R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1146,9 +1348,17 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 246107036438304318, guid: 382fcc17f051f124bb03c63260812145, type: 3}
+      propertyPath: m_Layer
+      value: 3
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 382fcc17f051f124bb03c63260812145, type: 3}
       propertyPath: m_Name
       value: Cessna172
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 382fcc17f051f124bb03c63260812145, type: 3}
+      propertyPath: m_Layer
+      value: 3
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
