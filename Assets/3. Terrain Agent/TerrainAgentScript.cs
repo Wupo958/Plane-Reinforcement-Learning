@@ -35,9 +35,6 @@ public class TerrainAgentScript : Agent
 
     [SerializeField] private Vector3 runwaySpawnPosition = new Vector3(250f, 25f, -3010f);
 
-    [SerializeField, Range(0f, 1f)] private float departureGateChance = 0.5f;
-    [SerializeField] private int departureGateIndex = 0;
-
     [SerializeField, Range(-1f, 1f)] private float pitch;
     [SerializeField, Range(-1f, 1f)] private float yaw;
     [SerializeField, Range(-1f, 1f)] private float roll;
@@ -76,6 +73,12 @@ public class TerrainAgentScript : Agent
         decisionRequester = GetComponent<DecisionRequester>();
         stats = new TerrainAgentStats(Academy.Instance.StatsRecorder);
 
+        if (!HasCheckpoints())
+        {
+            Debug.LogError(name + " has no checkpoints wired. Rebuild the scene with"
+                + " Terrain Map/Build World Scene, which fills the array in.");
+        }
+
         generationManager = FindFirstObjectByType<GenerationManager>();
         if (generationManager != null)
         {
@@ -86,12 +89,26 @@ public class TerrainAgentScript : Agent
         Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
     }
 
+    public bool IsParked
+    {
+        get { return isParked; }
+    }
+
     private void Park()
     {
         isParked = true;
         decisionRequester.enabled = false;
         rb.isKinematic = true;
         generationManager.ReportParked(this);
+    }
+
+    // The map is about to be rebuilt underneath a plane that is still flying. That is a
+    // truncation and not a crash, so the state it gets cut off in still has its value
+    // bootstrapped; ending it as a terminal state instead would teach the plane that whatever it
+    // was doing when the rebuild interval elapsed is fatal.
+    public void InterruptEpisode()
+    {
+        EpisodeInterrupted();
     }
 
     public void Release()
@@ -104,22 +121,35 @@ public class TerrainAgentScript : Agent
         SelectStartingCheckpoint();
     }
 
+    private bool HasCheckpoints()
+    {
+        return checkpoints != null && checkpoints.Length > 0;
+    }
+
     private void SelectStartingCheckpoint()
     {
-        if (Random.value < departureGateChance)
+        if (!HasCheckpoints())
         {
-            SelectCheckpoint(Mathf.Clamp(departureGateIndex, 0, checkpoints.Length - 1));
+            return;
         }
-        else
-        {
-            SelectCheckpoint(Random.Range(0, checkpoints.Length));
-        }
+        SelectCheckpoint(Random.Range(0, checkpoints.Length));
     }
 
     private void SelectCheckpoint(int index)
     {
-        activeIndex = index;
+        if (!HasCheckpoints())
+        {
+            activeCheckpoint = null;
+            return;
+        }
+
+        activeIndex = Mathf.Clamp(index, 0, checkpoints.Length - 1);
         activeCheckpoint = checkpoints[activeIndex];
+        if (activeCheckpoint == null)
+        {
+            return;
+        }
+
         prevDist = Vector3.Distance(transform.position, activeCheckpoint.transform.position);
         bestDist = prevDist;
         stallSteps = 0;
@@ -127,6 +157,20 @@ public class TerrainAgentScript : Agent
 
     private void SelectDifferentCheckpoint()
     {
+        if (!HasCheckpoints())
+        {
+            return;
+        }
+
+        // Random.Range(1, 1) returns 1, so with a single gate the modulo lands back on the same
+        // one and the stall penalty would then fire every step forever. Reselect it deliberately,
+        // which at least resets the stall window.
+        if (checkpoints.Length == 1)
+        {
+            SelectCheckpoint(0);
+            return;
+        }
+
         int offset = Random.Range(1, checkpoints.Length);
         SelectCheckpoint((activeIndex + offset) % checkpoints.Length);
     }
@@ -137,10 +181,18 @@ public class TerrainAgentScript : Agent
         checkpointAmount = 0f;
         gateReassignCount = 0f;
 
+        // A queued contact can land after Park() has already made the body kinematic, and
+        // the crash it reports resets the episode from inside that same physics step, so
+        // these writes used to hit a kinematic body and be rejected with a warning per
+        // reset. Clearing the flag first makes them stick; the Park() call at the end of
+        // this method puts it back when the episode is meant to start parked.
+        rb.isKinematic = false;
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
-        transform.localPosition = runwaySpawnPosition;
-        transform.localRotation = Quaternion.identity;
+        // The builder writes a world position into runwaySpawnPosition, so apply it as one; the
+        // two agree only while the agent happens to sit at the scene root.
+        transform.position = runwaySpawnPosition;
+        transform.rotation = Quaternion.identity;
 
         pitch = 0f;
         roll = 0f;
@@ -173,8 +225,18 @@ public class TerrainAgentScript : Agent
 
     private void CalcValues()
     {
-        dirToTarget = transform.InverseTransformDirection(activeCheckpoint.transform.position - transform.position);
         clearanceBelow = ClearanceBelow();
+
+        // The observation count has to stay constant every step, so a missing gate contributes
+        // zeros rather than throwing and taking the training run down with it.
+        if (activeCheckpoint == null)
+        {
+            dirToTarget = Vector3.zero;
+            altitudeError = 0f;
+            return;
+        }
+
+        dirToTarget = transform.InverseTransformDirection(activeCheckpoint.transform.position - transform.position);
         altitudeError = Mathf.Clamp(
             (activeCheckpoint.transform.position.y - transform.position.y) / altitudeErrorNormalizer,
             -1f, 1f);
@@ -210,6 +272,11 @@ public class TerrainAgentScript : Agent
             return;
         }
 
+        if (generationManager != null)
+        {
+            generationManager.ReportDecision();
+        }
+
         ActionSegment<float> continuousActions = actions.ContinuousActions;
         ActionSegment<int> discreteActions = actions.DiscreteActions;
 
@@ -237,10 +304,15 @@ public class TerrainAgentScript : Agent
 
     private void GiveRewards()
     {
+        AddReward(timeCostPerStep);
+        if (activeCheckpoint == null)
+        {
+            return;
+        }
+
         float dist = Vector3.Distance(transform.position, activeCheckpoint.transform.position);
         AddReward((prevDist - dist) * distanceRewardScale);
         prevDist = dist;
-        AddReward(timeCostPerStep);
         CheckGateProgress(dist);
     }
 
@@ -301,13 +373,18 @@ public class TerrainAgentScript : Agent
             return;
         }
 
+        // Crashing ends the episode, and that can tear the world down and rebuild it before this
+        // method resumes. Falling through to the next check would then dereference a collider that
+        // no longer exists, so each outcome returns instead.
         if (hit.collider.CompareTag("Ground"))
         {
             Crashed("Ground");
+            return;
         }
         if (hit.collider.CompareTag("Building"))
         {
             Crashed("Building");
+            return;
         }
         if (hit.collider.CompareTag("Runway"))
         {

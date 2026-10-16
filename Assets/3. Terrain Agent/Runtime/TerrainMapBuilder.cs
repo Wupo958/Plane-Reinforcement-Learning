@@ -57,6 +57,32 @@ public class TerrainMapBuilder
     private Vector2 bayCenter = new Vector2(-560f, -2700f);
     private Vector2 solarFarmCenter = new Vector2(60f, -1150f);
 
+    // Every centre above is only a starting value now. PlaceSettlements overwrites all of them
+    // except the airport, which has to stay put: agents spawn from a runway position baked into
+    // the prefab, so moving it would drop every plane into open terrain on the next rebuild.
+    private float settlementHalfExtent = 2500f;
+    private float settlementGap = 120f;
+    private int settlementAttempts = 900;
+    private List<Vector2> claimedSites = new List<Vector2>();
+    private List<float> claimedRadii = new List<float>();
+
+    // A seed can simply run out of room. Anything that fails to find a site is left out of the
+    // world entirely rather than being forced somewhere it does not fit.
+    private bool hasKestrel;
+    private bool hasPortVane;
+    private bool hasLarkfield;
+    private bool hasHollowPine;
+    private bool hasIronworks;
+    private bool hasNorthgate;
+    private bool hasCastle;
+    private bool hasSolarFarm;
+    private bool hasWindFarmA;
+    private bool hasWindFarmB;
+    private Vector2 windFarmAStart;
+    private Vector2 windFarmAEnd;
+    private Vector2 windFarmBStart;
+    private Vector2 windFarmBEnd;
+
     private float kestrelHeight = 44f;
     private float portVaneHeight = 20f;
     private float larkfieldHeight = 26f;
@@ -70,8 +96,33 @@ public class TerrainMapBuilder
     private GameObject smokeRoot;
     private GameObject trafficRoot;
 
+    // The runtime rebuild has to reattach the showcase components, which the editor-only wiring
+    // pass would otherwise be the only thing to set up.
+    public GameObject ShowcaseRoot { get { return showcaseRoot; } }
+    public GameObject SmokeRoot { get { return smokeRoot; } }
+    public GameObject TrafficRoot { get { return trafficRoot; } }
+
     private float runwayHalfWidth = 30f;
     private float runwayHalfLength = 700f;
+
+    // The airport plateau, held in fields because two passes need the same rectangle: the flatten
+    // that carves it and the pass that puts it back once everything else has had its say.
+    private float airportHalfX = 430f;
+    private float airportHalfZ = 800f;
+    private float airportFalloff = 620f;
+
+    // The departure path off the north end of the strip. 8% is a gradient a plane holding 40 m/s
+    // can actually climb; the corridor runs long enough to get it to ~215m before handing back to
+    // natural ground.
+    private float departureLength = 4000f;
+    private float departureGradient = 0.08f;
+    private float departureHalfWidth = 200f;
+    private float departureFalloff = 300f;
+    // The ramp has to run until it meets natural ground, or the taper just rebuilds the wall
+    // further out: at 2400/700 every seed still had 100m+ of terrain standing in the climb path
+    // around the 2km mark. Swept over four settings, this one costs 14% more excavation than the
+    // short version and takes the worst incursion from 183m to 5m.
+    private float departureFade = 1400f;
 
 #if UNITY_EDITOR
     [MenuItem("Terrain Map/Build World Scene")]
@@ -108,6 +159,8 @@ public class TerrainMapBuilder
 
         BuildHeightField();
         PrepareCorridors();
+        ProtectAirportPlateau();
+        CarveDepartureCorridor();
         PrepareAssets();
 
         GameObject root = new GameObject("World");
@@ -134,12 +187,30 @@ public class TerrainMapBuilder
         decorBatch = new MapMeshBatch();
 
         MapCityBuilder cityBuilder = new MapCityBuilder(library, field, buildingsRoot.transform, roadBatch, carBatch, propBatch);
-        cityBuilder.Build(KestrelCityPlan());
-        cityBuilder.Build(PortVanePlan());
-        cityBuilder.Build(LarkfieldPlan());
-        cityBuilder.Build(HollowPinePlan());
-        cityBuilder.Build(IndustrialPlan("Ironworks", ironworksCenter, 400f, 360f));
-        cityBuilder.Build(IndustrialPlan("NorthgateWorks", northgateCenter, 340f, 310f));
+        if (hasKestrel)
+        {
+            cityBuilder.Build(KestrelCityPlan());
+        }
+        if (hasPortVane)
+        {
+            cityBuilder.Build(PortVanePlan());
+        }
+        if (hasLarkfield)
+        {
+            cityBuilder.Build(LarkfieldPlan());
+        }
+        if (hasHollowPine)
+        {
+            cityBuilder.Build(HollowPinePlan());
+        }
+        if (hasIronworks)
+        {
+            cityBuilder.Build(IndustrialPlan("Ironworks", ironworksCenter, 400f, 360f));
+        }
+        if (hasNorthgate)
+        {
+            cityBuilder.Build(IndustrialPlan("NorthgateWorks", northgateCenter, 340f, 310f));
+        }
 
         PlaceCorridorRoads(roadBatch, carBatch);
         BuildAirport(root.transform, buildingsRoot.transform, carBatch);
@@ -148,21 +219,42 @@ public class TerrainMapBuilder
         decorBuilder.Build();
 
         MapCastleBuilder castleBuilder = new MapCastleBuilder(library, field, decorBatch);
-        castleBuilder.Build(castleCenter, 11, 10, castleHeight);
+        if (hasCastle)
+        {
+            castleBuilder.Build(castleCenter, 11, 10);
+        }
 
         MapIndustryBuilder industryBuilder = new MapIndustryBuilder(library, field, decorBatch, exclusions);
-        industryBuilder.ScatterYard(IndustrialPlan("Ironworks", ironworksCenter, 400f, 360f), ironworksCenter, 330f, 9, 7, 26, 2);
-        industryBuilder.ScatterYard(IndustrialPlan("NorthgateWorks", northgateCenter, 340f, 310f), northgateCenter, 270f, 7, 6, 20, 2);
-        industryBuilder.BuildSolarFarm(solarFarmCenter, 9, 7, 46f, 20f);
-        industryBuilder.BuildWindFarm(new Vector2(1250f, 2720f), new Vector2(2250f, 2180f), 13, 55f);
-        industryBuilder.BuildWindFarm(new Vector2(-2950f, -520f), new Vector2(-2350f, -1350f), 9, 50f);
+        if (hasIronworks)
+        {
+            industryBuilder.ScatterYard(IndustrialPlan("Ironworks", ironworksCenter, 400f, 360f), ironworksCenter, 330f, 9, 7, 26, 2);
+        }
+        if (hasNorthgate)
+        {
+            industryBuilder.ScatterYard(IndustrialPlan("NorthgateWorks", northgateCenter, 340f, 310f), northgateCenter, 270f, 7, 6, 20, 2);
+        }
+        if (hasSolarFarm)
+        {
+            industryBuilder.BuildSolarFarm(solarFarmCenter, 9, 7, 46f, 20f);
+        }
+        if (hasWindFarmA)
+        {
+            industryBuilder.BuildWindFarm(windFarmAStart, windFarmAEnd, 13, 55f);
+        }
+        if (hasWindFarmB)
+        {
+            industryBuilder.BuildWindFarm(windFarmBStart, windFarmBEnd, 9, 50f);
+        }
 
         MapWaterBuilder waterBuilder = new MapWaterBuilder(library, field, decorBatch);
-        waterBuilder.Build(lakeCenter, bayCenter, new Vector2(2150f, -1950f));
+        waterBuilder.Build(lakeCenter, bayCenter, HarbourPoint());
 
         decorBuilder.PlaceCharacters(airportCenter.x + 175f, airportCenter.y - 260f, 90f, 14);
 
-        exclusions.Add(MapShape.Disc(solarFarmCenter.x, solarFarmCenter.y, 290f, 60f));
+        if (hasSolarFarm)
+        {
+            exclusions.Add(MapShape.Disc(solarFarmCenter.x, solarFarmCenter.y, 290f, 60f));
+        }
         List<Vector3> decorClusters = decorBuilder.StructureClusters();
         for (int i = 0; i < decorClusters.Count; i++)
         {
@@ -202,23 +294,47 @@ public class TerrainMapBuilder
     {
         field = new MapHeightField();
 
-        AddCity(kestrelCenter, 800f, 720f, 850f, kestrelHeight);
-        AddCity(portVaneCenter, 520f, 480f, 780f, portVaneHeight);
-        AddCity(larkfieldCenter, 600f, 540f, 700f, larkfieldHeight);
-        AddCity(hollowPineCenter, 330f, 290f, 620f, hollowPineHeight);
-        AddCity(airportCenter, 430f, 800f, 620f, airportHeight);
-        AddCity(ironworksCenter, 420f, 380f, 560f, ironworksHeight);
-        AddCity(northgateCenter, 360f, 330f, 520f, northgateHeight);
-        AddCity(castleCenter, 170f, 155f, 250f, castleHeight);
+        RandomizeTerrainFeatures();
+        PlaceSettlements();
 
-        AddDiscPaint(kestrelCenter, 560f, 300f, MapPalette.GrassMid, MapPalette.GrassDark, 0.55f, 0.75f);
-        AddDiscPaint(portVaneCenter, 400f, 250f, MapPalette.Grass, MapPalette.GrassMid, 0.55f, 0.75f);
-        AddDiscPaint(larkfieldCenter, 470f, 260f, MapPalette.GrassMid, MapPalette.Grass, 0.55f, 0.8f);
-        AddDiscPaint(hollowPineCenter, 250f, 190f, MapPalette.GrassDark, MapPalette.Dirt, 0.55f, 0.7f);
+        AddCity(airportCenter, airportHalfX, airportHalfZ, airportFalloff, airportHeight);
         AddPaint(airportCenter, 380f, 740f, 200f, MapPalette.RunwayGrass, MapPalette.GrassLight, 0.6f, 0.35f);
-        AddDiscPaint(ironworksCenter, 380f, 240f, MapPalette.Apron, MapPalette.ConcreteDark, 0.55f, 0.7f);
-        AddDiscPaint(northgateCenter, 320f, 220f, MapPalette.ConcreteDark, MapPalette.Apron, 0.55f, 0.7f);
-        AddDiscPaint(castleCenter, 165f, 120f, MapPalette.Dirt, MapPalette.RockLight, 0.5f, 0.45f);
+
+        if (hasKestrel)
+        {
+            AddCity(kestrelCenter, 800f, 720f, 850f, kestrelHeight);
+            AddDiscPaint(kestrelCenter, 560f, 300f, MapPalette.GrassMid, MapPalette.GrassDark, 0.55f, 0.75f);
+        }
+        if (hasPortVane)
+        {
+            AddCity(portVaneCenter, 520f, 480f, 780f, portVaneHeight);
+            AddDiscPaint(portVaneCenter, 400f, 250f, MapPalette.Grass, MapPalette.GrassMid, 0.55f, 0.75f);
+        }
+        if (hasLarkfield)
+        {
+            AddCity(larkfieldCenter, 600f, 540f, 700f, larkfieldHeight);
+            AddDiscPaint(larkfieldCenter, 470f, 260f, MapPalette.GrassMid, MapPalette.Grass, 0.55f, 0.8f);
+        }
+        if (hasHollowPine)
+        {
+            AddCity(hollowPineCenter, 330f, 290f, 620f, hollowPineHeight);
+            AddDiscPaint(hollowPineCenter, 250f, 190f, MapPalette.GrassDark, MapPalette.Dirt, 0.55f, 0.7f);
+        }
+        if (hasIronworks)
+        {
+            AddCity(ironworksCenter, 420f, 380f, 560f, ironworksHeight);
+            AddDiscPaint(ironworksCenter, 380f, 240f, MapPalette.Apron, MapPalette.ConcreteDark, 0.55f, 0.7f);
+        }
+        if (hasNorthgate)
+        {
+            AddCity(northgateCenter, 360f, 330f, 520f, northgateHeight);
+            AddDiscPaint(northgateCenter, 320f, 220f, MapPalette.ConcreteDark, MapPalette.Apron, 0.55f, 0.7f);
+        }
+        if (hasCastle)
+        {
+            AddCity(castleCenter, 170f, 155f, 250f, castleHeight);
+            AddDiscPaint(castleCenter, 165f, 120f, MapPalette.Dirt, MapPalette.RockLight, 0.5f, 0.45f);
+        }
 
         field.Generate();
     }
@@ -253,6 +369,87 @@ public class TerrainMapBuilder
         flatten.height = height;
         field.flattens.Add(flatten);
         exclusions.Add(MapShape.Rect(center.x, center.y, halfX, halfZ, falloff));
+    }
+
+    // Overlaps spaces settlements by their claim radii alone and never by the 620-850m falloff
+    // their flatten reaches out with, so a town sited at the minimum separation still drags the
+    // airport plateau towards its own height: Generate applies flattens in list order and the
+    // airport's goes in first, so every later one wins over it. At the far end of the strip that
+    // falloff weight reaches about 0.68, which on the seeds where a tall town lands on that side
+    // is a fifty-metre hill sitting across the runway. The corridor flattens run later still.
+    // Re-asserting the plateau after all of them is what actually keeps the strip flyable.
+    private void ProtectAirportPlateau()
+    {
+        MapShape plateau = MapShape.Rect(airportCenter.x, airportCenter.y,
+            airportHalfX, airportHalfZ, airportFalloff);
+
+        int side = field.cells + 1;
+        for (int j = 0; j <= field.cells; j++)
+        {
+            float z = field.VertexX(j);
+            for (int i = 0; i <= field.cells; i++)
+            {
+                float x = field.VertexX(i);
+                float weight = plateau.Weight(x, z);
+                if (weight <= 0f)
+                {
+                    continue;
+                }
+                int index = j * side + i;
+                field.heights[index] = Mathf.Lerp(field.heights[index], airportHeight, weight);
+            }
+        }
+    }
+
+    // Measured across 24 seeds: in the first 800m past the north end of the runway, terrain peaks
+    // above 60m on 23 of them, typically around 310m and as high as 458m, against a strip at 22m.
+    // Every plane rolls northbound, so that is a wall standing in the departure path, and it is
+    // why they learned to claw for altitude the moment the wheels come up. This cuts a climbable
+    // gradient through it. Ground already below the ceiling is left alone rather than raised, so
+    // valleys and coastline on the way out survive untouched.
+    private void CarveDepartureCorridor()
+    {
+        float axisX = airportCenter.x;
+        float startZ = airportCenter.y + runwayHalfLength;
+
+        int side = field.cells + 1;
+        for (int j = 0; j <= field.cells; j++)
+        {
+            float along = field.VertexX(j) - startZ;
+            if (along < 0f || along > departureLength)
+            {
+                continue;
+            }
+
+            // Without the fade the far end of the corridor becomes a cliff of its own, which just
+            // moves the wall 2.4km further out instead of removing it.
+            float endFade = 1f - MapNoise.SmoothStep(departureLength - departureFade, departureLength, along);
+            if (endFade <= 0f)
+            {
+                continue;
+            }
+            float ceiling = airportHeight + along * departureGradient;
+
+            for (int i = 0; i <= field.cells; i++)
+            {
+                int index = j * side + i;
+                float current = field.heights[index];
+                if (current <= ceiling)
+                {
+                    continue;
+                }
+
+                float lateral = Mathf.Abs(field.VertexX(i) - axisX);
+                float weight = 1f - MapNoise.SmoothStep(departureHalfWidth, departureHalfWidth + departureFalloff, lateral);
+                weight *= endFade;
+                if (weight <= 0f)
+                {
+                    continue;
+                }
+
+                field.heights[index] = Mathf.Lerp(current, ceiling, weight);
+            }
+        }
     }
 
     private void PrepareAssets()
@@ -510,94 +707,48 @@ public class TerrainMapBuilder
         return plan;
     }
 
+    // The road network used to be seven hand-traced polylines between fixed coordinates, which
+    // stopped meaning anything once the settlements started moving. A spanning tree over whatever
+    // layout the seed produced guarantees every town still ends up reachable.
     private void PrepareCorridors()
     {
-        MapCityPlan kestrelPlan = KestrelCityPlan();
-        MapCityPlan portVanePlan = PortVanePlan();
-        MapCityPlan larkfieldPlan = LarkfieldPlan();
-        MapCityPlan ironworksPlan = IndustrialPlan("Ironworks", ironworksCenter, 400f, 360f);
-        MapCityPlan northgatePlan = IndustrialPlan("NorthgateWorks", northgateCenter, 340f, 310f);
+        corridors.Clear();
 
-        MapCorridor airportToKestrel = new MapCorridor();
-        airportToKestrel.nodes = new Vector2[]
-        {
-            new Vector2(450f, -1700f),
-            new Vector2(620f, -1150f),
-            new Vector2(700f, -560f),
-            new Vector2(1150f, -180f),
-            new Vector2(1600f, 60f),
-            new Vector2(MapCityBuilder.RoadLineCoordinate(kestrelPlan, true, 1840f), 200f)
-        };
-        corridors.Add(airportToKestrel);
+        List<Vector2> hubs = new List<Vector2>();
+        List<float> radii = new List<float>();
+        List<bool> minor = new List<bool>();
 
-        MapCorridor kestrelToPortVane = new MapCorridor();
-        kestrelToPortVane.nodes = new Vector2[]
+        AddHub(hubs, radii, minor, airportCenter, 760f, false);
+        if (hasKestrel)
         {
-            new Vector2(MapCityBuilder.RoadLineCoordinate(kestrelPlan, true, 2200f), 165f),
-            new Vector2(2300f, -250f),
-            new Vector2(2240f, -700f),
-            new Vector2(MapCityBuilder.RoadLineCoordinate(portVanePlan, true, 2200f), -1010f)
-        };
-        corridors.Add(kestrelToPortVane);
+            AddHub(hubs, radii, minor, kestrelCenter, 780f, false);
+        }
+        if (hasLarkfield)
+        {
+            AddHub(hubs, radii, minor, larkfieldCenter, 580f, false);
+        }
+        if (hasPortVane)
+        {
+            AddHub(hubs, radii, minor, portVaneCenter, 510f, false);
+        }
+        if (hasIronworks)
+        {
+            AddHub(hubs, radii, minor, ironworksCenter, 410f, true);
+        }
+        if (hasNorthgate)
+        {
+            AddHub(hubs, radii, minor, northgateCenter, 350f, true);
+        }
+        if (hasHollowPine)
+        {
+            AddHub(hubs, radii, minor, hollowPineCenter, 320f, true);
+        }
+        if (hasCastle)
+        {
+            AddHub(hubs, radii, minor, castleCenter, 180f, true);
+        }
 
-        MapCorridor airportToLarkfield = new MapCorridor();
-        airportToLarkfield.nodes = new Vector2[]
-        {
-            new Vector2(-180f, -2350f),
-            new Vector2(-620f, -2440f),
-            new Vector2(-1060f, -2490f),
-            new Vector2(MapCityBuilder.RoadLineCoordinate(larkfieldPlan, true, -1330f), -2250f)
-        };
-        corridors.Add(airportToLarkfield);
-
-        MapCorridor ironworksSpur = new MapCorridor();
-        ironworksSpur.halfWidth = 20f;
-        ironworksSpur.falloff = 120f;
-        ironworksSpur.tileSize = 20f;
-        ironworksSpur.nodes = new Vector2[]
-        {
-            new Vector2(880f, -470f),
-            new Vector2(1010f, -600f),
-            new Vector2(MapCityBuilder.RoadLineCoordinate(ironworksPlan, true, 1100f), -780f)
-        };
-        corridors.Add(ironworksSpur);
-
-        MapCorridor northgateSpur = new MapCorridor();
-        northgateSpur.halfWidth = 20f;
-        northgateSpur.falloff = 120f;
-        northgateSpur.tileSize = 20f;
-        northgateSpur.nodes = new Vector2[]
-        {
-            new Vector2(680f, 2300f),
-            new Vector2(630f, 2160f),
-            new Vector2(MapCityBuilder.RoadLineCoordinate(northgatePlan, true, 610f), 1960f)
-        };
-        corridors.Add(northgateSpur);
-
-        MapCorridor lakeRoad = new MapCorridor();
-        lakeRoad.nodes = new Vector2[]
-        {
-            new Vector2(1450f, 1500f),
-            new Vector2(1050f, 2200f),
-            new Vector2(300f, 2330f),
-            new Vector2(-700f, 2050f),
-            new Vector2(-1500f, 1800f),
-            new Vector2(-1900f, 1430f)
-        };
-        corridors.Add(lakeRoad);
-
-        MapCorridor castleRoad = new MapCorridor();
-        castleRoad.halfWidth = 16f;
-        castleRoad.falloff = 110f;
-        castleRoad.tileSize = 16f;
-        castleRoad.nodes = new Vector2[]
-        {
-            new Vector2(-2210f, 1430f),
-            new Vector2(-2430f, 1540f),
-            new Vector2(-2600f, 1660f),
-            new Vector2(-2740f, 1770f)
-        };
-        corridors.Add(castleRoad);
+        ConnectSpanningTree(hubs, radii, minor);
 
         for (int i = 0; i < corridors.Count; i++)
         {
@@ -607,6 +758,374 @@ public class TerrainMapBuilder
         }
     }
 
+    private void AddHub(List<Vector2> hubs, List<float> radii, List<bool> minor,
+                        Vector2 center, float radius, bool isMinor)
+    {
+        hubs.Add(center);
+        radii.Add(radius);
+        minor.Add(isMinor);
+    }
+
+    // A nearest-neighbour spanning tree, grown out from the airport so the runway is the root of
+    // the network rather than some town on the far side of the island.
+    private void ConnectSpanningTree(List<Vector2> hubs, List<float> radii, List<bool> minor)
+    {
+        bool[] connected = new bool[hubs.Count];
+        connected[0] = true;
+        int remaining = hubs.Count - 1;
+
+        while (remaining > 0)
+        {
+            int bestFrom = -1;
+            int bestTo = -1;
+            float bestDistance = float.MaxValue;
+
+            for (int a = 0; a < hubs.Count; a++)
+            {
+                if (!connected[a])
+                {
+                    continue;
+                }
+                for (int b = 0; b < hubs.Count; b++)
+                {
+                    if (connected[b])
+                    {
+                        continue;
+                    }
+                    float distance = Vector2.Distance(hubs[a], hubs[b]);
+                    if (distance < bestDistance)
+                    {
+                        bestDistance = distance;
+                        bestFrom = a;
+                        bestTo = b;
+                    }
+                }
+            }
+
+            if (bestTo < 0)
+            {
+                break;
+            }
+
+            AddGeneratedCorridor(hubs[bestFrom], hubs[bestTo], radii[bestFrom], radii[bestTo], minor[bestTo]);
+            connected[bestTo] = true;
+            remaining--;
+        }
+    }
+
+    // Roads leave and arrive at the edge of a settlement rather than its centre, so they meet the
+    // street grid of the town instead of being carved straight through the buildings.
+    private void AddGeneratedCorridor(Vector2 from, Vector2 to, float fromRadius, float toRadius, bool spur)
+    {
+        Vector2 delta = to - from;
+        float distance = delta.magnitude;
+        if (distance < fromRadius + toRadius + 140f)
+        {
+            return;
+        }
+
+        Vector2 direction = delta / distance;
+        Vector2 normal = new Vector2(-direction.y, direction.x);
+        Vector2 start = from + direction * fromRadius;
+        Vector2 end = to - direction * toRadius;
+
+        float span = Vector2.Distance(start, end);
+        int segments = Mathf.Clamp(Mathf.RoundToInt(span / 420f), 2, 9);
+        float bend = Random.Range(-1f, 1f) * Mathf.Min(300f, span * 0.18f);
+
+        Vector2[] nodes = new Vector2[segments + 1];
+        for (int i = 0; i <= segments; i++)
+        {
+            float t = (float)i / segments;
+            Vector2 point = Vector2.Lerp(start, end, t) + normal * bend * Mathf.Sin(t * Mathf.PI);
+            if (i > 0 && i < segments)
+            {
+                point += new Vector2(Random.Range(-60f, 60f), Random.Range(-60f, 60f));
+            }
+            nodes[i] = point;
+        }
+
+        MapCorridor corridor = new MapCorridor();
+        corridor.nodes = nodes;
+        if (spur)
+        {
+            corridor.halfWidth = 20f;
+            corridor.falloff = 120f;
+            corridor.tileSize = 20f;
+        }
+        corridors.Add(corridor);
+    }
+
+    // The height field reads as a pure function of position, so the ridges, river, bay and lake
+    // have to be repositioned explicitly or the same island comes back on every seed.
+    //
+    // The airport cannot move with them, so a roll that leaves it in open water is thrown away and
+    // tried again. The runway flatten would still hold the strip at its fixed height, but it would
+    // be a slab in the middle of the sea with nothing around it.
+    private void RandomizeTerrainFeatures()
+    {
+        for (int attempt = 0; attempt < 12; attempt++)
+        {
+            RollTerrainFeatures();
+            if (AirportSiteIsOnLand())
+            {
+                return;
+            }
+        }
+
+        Debug.LogWarning("Could not find terrain that leaves the airport on dry land after 12 rolls;"
+            + " the runway may end up surrounded by water on this seed.");
+    }
+
+    private void RollTerrainFeatures()
+    {
+        field.noiseOffsetX = Random.Range(-900f, 900f);
+        field.noiseOffsetZ = Random.Range(-900f, 900f);
+
+        field.mainRidge = RandomRidgePath(Random.Range(2100f, 3100f));
+        field.northRidge = RandomRidgePath(Random.Range(1900f, 2800f));
+
+        lakeCenter = RandomRingPoint(900f, 1850f);
+        field.lakeCenter = lakeCenter;
+
+        bayCenter = RandomRingPoint(2300f, 2900f);
+        field.bay = RandomBayPath(bayCenter);
+        field.river = RandomRiverPath(lakeCenter, bayCenter);
+    }
+
+    // Coastal is fine and matches the original layout, so this only rejects a genuinely offshore
+    // runway: the centre has to be above water and most of the ring around it has to be too.
+    private bool AirportSiteIsOnLand()
+    {
+        if (field.NaturalHeight(airportCenter.x, airportCenter.y) < 8f)
+        {
+            return false;
+        }
+
+        int dry = 0;
+        for (int i = 0; i < 8; i++)
+        {
+            float angle = i * Mathf.PI * 0.25f;
+            float sample = field.NaturalHeight(
+                airportCenter.x + Mathf.Cos(angle) * 700f,
+                airportCenter.y + Mathf.Sin(angle) * 700f);
+            if (sample >= 2f)
+            {
+                dry++;
+            }
+        }
+        return dry >= 6;
+    }
+
+    private Vector2[] RandomRidgePath(float span)
+    {
+        float angle = Random.Range(0f, Mathf.PI * 2f);
+        Vector2 direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+        Vector2 normal = new Vector2(-direction.y, direction.x);
+        Vector2 start = -direction * span * 0.5f + normal * Random.Range(-700f, 700f);
+
+        Vector2[] nodes = new Vector2[4];
+        for (int i = 0; i < nodes.Length; i++)
+        {
+            float t = i / (float)(nodes.Length - 1);
+            nodes[i] = start + direction * span * t + normal * Random.Range(-420f, 420f);
+        }
+        return nodes;
+    }
+
+    private Vector2 RandomRingPoint(float minRadius, float maxRadius)
+    {
+        float angle = Random.Range(0f, Mathf.PI * 2f);
+        float radius = Random.Range(minRadius, maxRadius);
+        return new Vector2(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius);
+    }
+
+    // A bay is an inlet, so it runs from open water outside the island back in towards the coast.
+    private Vector2[] RandomBayPath(Vector2 mouth)
+    {
+        Vector2 inward = -mouth.normalized;
+        Vector2 normal = new Vector2(-inward.y, inward.x);
+        Vector2 outer = mouth - inward * 1000f;
+        Vector2 inner = mouth + inward * 700f;
+
+        Vector2[] nodes = new Vector2[4];
+        for (int i = 0; i < nodes.Length; i++)
+        {
+            float t = i / (float)(nodes.Length - 1);
+            nodes[i] = Vector2.Lerp(outer, inner, t) + normal * Random.Range(-140f, 140f);
+        }
+        return nodes;
+    }
+
+    // The river drains the lake towards the bay, which keeps it running downhill into the sea
+    // instead of stopping halfway up a hillside.
+    private Vector2[] RandomRiverPath(Vector2 from, Vector2 to)
+    {
+        Vector2 direction = (to - from).normalized;
+        Vector2 normal = new Vector2(-direction.y, direction.x);
+
+        Vector2[] nodes = new Vector2[7];
+        for (int i = 0; i < nodes.Length; i++)
+        {
+            float t = i / (float)(nodes.Length - 1);
+            float wander = Mathf.Sin(t * Mathf.PI * 1.6f) * Random.Range(90f, 260f);
+            nodes[i] = Vector2.Lerp(from, to, t) + normal * wander;
+        }
+        return nodes;
+    }
+
+    // Largest first, because rejection sampling struggles to fit the big towns in once the small
+    // ones have taken the good ground.
+    private void PlaceSettlements()
+    {
+        claimedSites.Clear();
+        claimedRadii.Clear();
+        Claim(airportCenter, 900f);
+
+        hasKestrel = PlaceSettlement(800f, 720f, 8f, 240f, out kestrelCenter, out kestrelHeight);
+        hasLarkfield = PlaceSettlement(600f, 540f, 8f, 240f, out larkfieldCenter, out larkfieldHeight);
+        hasPortVane = PlaceSettlement(520f, 480f, 4f, 200f, out portVaneCenter, out portVaneHeight);
+        hasIronworks = PlaceSettlement(420f, 380f, 8f, 240f, out ironworksCenter, out ironworksHeight);
+        hasNorthgate = PlaceSettlement(360f, 330f, 8f, 260f, out northgateCenter, out northgateHeight);
+        hasHollowPine = PlaceSettlement(330f, 290f, 60f, 330f, out hollowPineCenter, out hollowPineHeight);
+        hasCastle = PlaceSettlement(170f, 155f, 120f, 460f, out castleCenter, out castleHeight);
+
+        float ground;
+        hasSolarFarm = PlaceSettlement(290f, 290f, 8f, 220f, out solarFarmCenter, out ground);
+
+        Vector2 windSite;
+        hasWindFarmA = PlaceSettlement(520f, 520f, 8f, 300f, out windSite, out ground);
+        if (hasWindFarmA)
+        {
+            SpreadWindFarm(windSite, out windFarmAStart, out windFarmAEnd);
+        }
+
+        hasWindFarmB = PlaceSettlement(460f, 460f, 8f, 300f, out windSite, out ground);
+        if (hasWindFarmB)
+        {
+            SpreadWindFarm(windSite, out windFarmBStart, out windFarmBEnd);
+        }
+    }
+
+    // Turbines are built along a line rather than around a point, so the site is stretched out in
+    // a random direction to give the row something to follow.
+    private void SpreadWindFarm(Vector2 site, out Vector2 start, out Vector2 end)
+    {
+        float angle = Random.Range(0f, Mathf.PI * 2f);
+        Vector2 direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+        start = site - direction * 400f;
+        end = site + direction * 400f;
+    }
+
+    // Sites are judged against the natural height field before any flattening happens, so a town
+    // only lands on ground that is already dry and roughly level. The flatten height comes back out
+    // of the chosen site as well: leaving it a constant would gouge a crater into a hillside or
+    // raise a mesa out of the lowlands.
+    private bool PlaceSettlement(float halfX, float halfZ, float minHeight, float maxHeight,
+                                 out Vector2 site, out float groundHeight)
+    {
+        float radius = Mathf.Max(halfX, halfZ);
+        Vector2 best = Vector2.zero;
+        float bestGround = minHeight;
+        float bestSpread = float.MaxValue;
+        bool found = false;
+
+        for (int attempt = 0; attempt < settlementAttempts; attempt++)
+        {
+            Vector2 candidate = new Vector2(
+                Random.Range(-settlementHalfExtent, settlementHalfExtent),
+                Random.Range(-settlementHalfExtent, settlementHalfExtent));
+
+            if (Overlaps(candidate, radius))
+            {
+                continue;
+            }
+
+            float center = field.NaturalHeight(candidate.x, candidate.y);
+            if (center < minHeight || center > maxHeight)
+            {
+                continue;
+            }
+
+            // Requiring the whole perimeter to be dry ruled out every coastal site, which is most of
+            // the flat ground on an island and the only place a port town makes sense. A majority is
+            // enough; a site that dips into the water scores a large spread and loses on ranking.
+            float lowest = center;
+            float highest = center;
+            int dry = 0;
+            for (int i = 0; i < 8; i++)
+            {
+                float angle = i * Mathf.PI * 0.25f;
+                float sample = field.NaturalHeight(
+                    candidate.x + Mathf.Cos(angle) * radius,
+                    candidate.y + Mathf.Sin(angle) * radius);
+                if (sample >= 0f)
+                {
+                    dry++;
+                }
+                lowest = Mathf.Min(lowest, sample);
+                highest = Mathf.Max(highest, sample);
+            }
+
+            if (dry < 5)
+            {
+                continue;
+            }
+
+            float spread = highest - lowest;
+            if (spread < bestSpread)
+            {
+                bestSpread = spread;
+                best = candidate;
+                bestGround = center;
+                found = true;
+            }
+        }
+
+        if (!found)
+        {
+            // Forcing it somewhere anyway produced overlapping towns and buildings buried in
+            // hillsides, so the settlement is simply left out of this world instead.
+            site = Vector2.zero;
+            groundHeight = minHeight;
+            return false;
+        }
+
+        Claim(best, radius);
+        site = best;
+        groundHeight = Mathf.Max(bestGround, 8f);
+        return true;
+    }
+
+    private void Claim(Vector2 center, float radius)
+    {
+        claimedSites.Add(center);
+        claimedRadii.Add(radius);
+    }
+
+    private bool Overlaps(Vector2 candidate, float radius)
+    {
+        for (int i = 0; i < claimedSites.Count; i++)
+        {
+            float needed = claimedRadii[i] + radius + settlementGap;
+            if (Vector2.Distance(claimedSites[i], candidate) < needed)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // The harbour belongs to the port town, so it follows it out towards open water.
+    private Vector2 HarbourPoint()
+    {
+        Vector2 outward = portVaneCenter.normalized;
+        if (outward == Vector2.zero)
+        {
+            outward = Vector2.right;
+        }
+        return portVaneCenter + outward * 600f;
+    }
     private void PlaceCorridorRoads(MapMeshBatch roadBatch, MapMeshBatch carBatch)
     {
         for (int i = 0; i < corridors.Count; i++)
@@ -1024,7 +1543,7 @@ public class TerrainMapBuilder
         renderer.shadowCastingMode = ShadowCastingMode.Off;
     }
 
-    private Mesh BuildTorus(float radius, float tube, int segments, int sides)
+    public static Mesh BuildTorus(float radius, float tube, int segments, int sides)
     {
         List<Vector3> vertices = new List<Vector3>();
         List<Vector3> normals = new List<Vector3>();

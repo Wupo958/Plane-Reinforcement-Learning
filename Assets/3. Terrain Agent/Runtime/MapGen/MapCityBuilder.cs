@@ -240,17 +240,23 @@ public class MapCityBuilder
         float scale = plan.tileSize / Mathf.Max(bounds.size.x, bounds.size.z);
         float y = field.SampleHeight(x, z);
 
-        Matrix4x4 matrix = Matrix4x4.TRS(new Vector3(x, y + 0.12f, z), Quaternion.Euler(0f, tileYaw, 0f), Vector3.one * scale);
+        // Yaw alone leaves every tile dead level at its own centre height, so a street crossing a
+        // slope breaks up into a staircase with the ground cutting through each tread. The highway
+        // tiles in PlaceCorridorRoad already tilt onto the terrain normal; streets get the same.
+        Vector3 normal = field.SampleNormal(x, z);
+        Quaternion grade = Quaternion.FromToRotation(Vector3.up, normal);
+
+        Matrix4x4 matrix = Matrix4x4.TRS(new Vector3(x, y + 0.12f, z), grade * Quaternion.Euler(0f, tileYaw, 0f), Vector3.one * scale);
         AddCombined(asset, roadBatch, matrix);
         roadTileCount++;
 
         if (!isCrossing && Random.value < plan.carChance)
         {
-            PlaceCar(plan, x, z, roadYaw, y);
+            PlaceCar(plan, x, z, roadYaw, y, grade);
         }
     }
 
-    private void PlaceCar(MapCityPlan plan, float x, float z, float roadYaw, float y)
+    private void PlaceCar(MapCityPlan plan, float x, float z, float roadYaw, float y, Quaternion grade)
     {
         int count = 1;
         if (Random.value < 0.45f)
@@ -258,7 +264,9 @@ public class MapCityBuilder
             count = 2;
         }
 
-        Quaternion laneRotation = Quaternion.Euler(0f, roadYaw, 0f);
+        // Graded as well, or the cars stand upright on a tilted street and the lane offset below
+        // walks them off the edge of it.
+        Quaternion laneRotation = grade * Quaternion.Euler(0f, roadYaw, 0f);
 
         for (int i = 0; i < count; i++)
         {

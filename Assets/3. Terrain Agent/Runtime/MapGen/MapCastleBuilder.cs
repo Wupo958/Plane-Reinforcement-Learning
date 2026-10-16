@@ -93,8 +93,15 @@ public class MapCastleBuilder
         return cursor;
     }
 
-    public void Build(Vector2 center, int cellsX, int cellsZ, float groundHeight)
+    public void Build(Vector2 center, int cellsX, int cellsZ)
     {
+        // Sampled here rather than passed in. The height the caller flattened this plateau to is
+        // only what it asked for: corridor flattening and the departure carve both run afterwards
+        // and can drop the ground under it by tens of metres, which left the entire castle hanging
+        // in the air while its own siege engines - the one part that already sampled the field -
+        // sat correctly on the ground below it. One sample at the centre, so the walls stay level
+        // with each other instead of following every bump.
+        float groundHeight = field.SampleHeight(center.x, center.y);
         float originX = center.x - (cellsX - 1) * unit * 0.5f;
         float originZ = center.y - (cellsZ - 1) * unit * 0.5f;
         float wallYawOffset = 0f;
