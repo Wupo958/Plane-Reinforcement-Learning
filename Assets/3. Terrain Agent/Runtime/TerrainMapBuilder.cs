@@ -104,6 +104,8 @@ public class TerrainMapBuilder
 
     private float runwayHalfWidth = 30f;
     private float runwayHalfLength = 700f;
+    private float runwayLift = 1f;
+    private float minimumGateClearance = 60f;
 
     // The airport plateau, held in fields because two passes need the same rectangle: the flatten
     // that carves it and the pass that puts it back once everything else has had its say.
@@ -1285,17 +1287,18 @@ public class TerrainMapBuilder
         float centerX = airportCenter.x;
         float centerZ = airportCenter.y;
         float top = field.SampleHeight(centerX, centerZ) + 0.3f;
+        float runwayTop = top + runwayLift;
 
         List<Vector3> vertices = new List<Vector3>();
         List<Vector3> normals = new List<Vector3>();
         List<Vector2> uvs = new List<Vector2>();
         List<int> triangles = new List<int>();
 
-        AddSlab(vertices, normals, uvs, triangles, centerX, centerZ, runwayHalfWidth, runwayHalfLength, top, 2.2f, MapPalette.Tarmac);
+        AddSlab(vertices, normals, uvs, triangles, centerX, centerZ, runwayHalfWidth, runwayHalfLength, runwayTop, 2.2f + runwayLift, MapPalette.Tarmac);
         AddSlab(vertices, normals, uvs, triangles, centerX + 175f, centerZ - 260f, 105f, 190f, top, 2.1f, MapPalette.Apron);
         AddSlab(vertices, normals, uvs, triangles, centerX + 50f, centerZ - 260f, 55f, 22f, top, 2.1f, MapPalette.Apron);
 
-        float markingY = top + 0.06f;
+        float markingY = runwayTop + 0.06f;
         for (int stripe = -3; stripe <= 3; stripe++)
         {
             float offset = stripe * 7f;
@@ -1335,8 +1338,8 @@ public class TerrainMapBuilder
         MeshRenderer renderer = runway.AddComponent<MeshRenderer>();
         renderer.sharedMaterial = terrainMaterial;
         BoxCollider collider = runway.AddComponent<BoxCollider>();
-        collider.center = new Vector3(centerX, top - 1.1f, centerZ);
-        collider.size = new Vector3(runwayHalfWidth * 2f, 2.2f, runwayHalfLength * 2f);
+        collider.center = new Vector3(centerX, runwayTop - (2.2f + runwayLift) * 0.5f, centerZ);
+        collider.size = new Vector3(runwayHalfWidth * 2f, 2.2f + runwayLift, runwayHalfLength * 2f);
         GameObjectUtility.SetStaticEditorFlags(runway, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccludeeStatic);
 
         BoxCollider apron = runway.AddComponent<BoxCollider>();
@@ -1496,12 +1499,20 @@ public class TerrainMapBuilder
             Debug.Log("Using baked checkpoint layout (" + gateCount + " gates) from " + CheckpointLayoutPath);
         }
 
+        int liftedGateCount = 0;
         for (int i = 0; i < gateCount; i++)
         {
             Vector3 gatePosition;
             if (useBaked)
             {
                 gatePosition = layout.Get(i);
+                float lowestReachableY = field.SampleHeight(gatePosition.x, gatePosition.z) + minimumGateClearance;
+                if (gatePosition.y < lowestReachableY)
+                {
+                    Debug.Log("Checkpoint " + (i + 1) + " sat at y " + gatePosition.y + ", lifted to " + lowestReachableY);
+                    gatePosition.y = lowestReachableY;
+                    liftedGateCount++;
+                }
             }
             else
             {
@@ -1525,6 +1536,11 @@ public class TerrainMapBuilder
 
             gateComponents.Add(checkpoint.AddComponent<CheckpointGate>());
             checkpointObjects.Add(checkpoint);
+        }
+
+        if (liftedGateCount > 0)
+        {
+            Debug.LogWarning(liftedGateCount + " baked checkpoints were below the terrain and got lifted. Re-run Terrain Map/Bake Checkpoints From Scene to keep the fix.");
         }
     }
 
@@ -1853,7 +1869,7 @@ public class TerrainMapBuilder
             return null;
         }
 
-        float runwayTop = field.SampleHeight(airportCenter.x, airportCenter.y);
+        float runwayTop = field.SampleHeight(airportCenter.x, airportCenter.y) + runwayLift;
         Vector3 spawn = new Vector3(airportCenter.x, runwayTop + 1.5f, airportCenter.y - runwayHalfLength + 90f);
         GameObject first = null;
 

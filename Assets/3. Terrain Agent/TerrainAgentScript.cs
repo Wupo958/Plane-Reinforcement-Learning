@@ -30,6 +30,9 @@ public class TerrainAgentScript : Agent
     [SerializeField] private float altitudeErrorNormalizer = 450f;
     [SerializeField] private float timeCostPerStep = -0.0002f;
 
+    [SerializeField] private float rotationRateDeadzone = 1f;
+    [SerializeField] private float rotationRatePenaltyScale = 0.002f;
+
     [SerializeField] private int gateStallLimit = 1500;
     [SerializeField] private float gateStallPenalty = -1f;
 
@@ -44,12 +47,12 @@ public class TerrainAgentScript : Agent
     private Vector3 dirToTarget;
     private GameObject activeCheckpoint;
     private int activeIndex;
-    private float prevDist;
     private float bestDist;
     private int stallSteps;
 
     private float checkpointAmount;
     private float gateReassignCount;
+    private float movementPenaltyAmount;
 
     private float clearanceBelow;
     private float altitudeError;
@@ -150,8 +153,7 @@ public class TerrainAgentScript : Agent
             return;
         }
 
-        prevDist = Vector3.Distance(transform.position, activeCheckpoint.transform.position);
-        bestDist = prevDist;
+        bestDist = Vector3.Distance(transform.position, activeCheckpoint.transform.position);
         stallSteps = 0;
     }
 
@@ -177,9 +179,10 @@ public class TerrainAgentScript : Agent
 
     public override void OnEpisodeBegin()
     {
-        stats.EndEpisode(checkpointAmount, gateReassignCount);
+        stats.EndEpisode(checkpointAmount, gateReassignCount, movementPenaltyAmount);
         checkpointAmount = 0f;
         gateReassignCount = 0f;
+        movementPenaltyAmount = 0f;
 
         // A queued contact can land after Park() has already made the body kinematic, and
         // the crash it reports resets the episode from inside that same physics step, so
@@ -259,6 +262,11 @@ public class TerrainAgentScript : Agent
         return clearanceBelow * maxTerrainClearance >= 15f;
     }
 
+    private bool IsFlippedOnGround()
+    {
+        return (transform.up.y < 0.0f && !IsAirborne());
+    }
+
     public override void Heuristic(in ActionBuffers actionsOut)
     {
         actionsOut.ContinuousActions.Clear();
@@ -305,15 +313,32 @@ public class TerrainAgentScript : Agent
     private void GiveRewards()
     {
         AddReward(timeCostPerStep);
+
+        float movementPenalty = DrasticMovementPenalty();
+        AddReward(movementPenalty);
+        movementPenaltyAmount += movementPenalty;
+
         if (activeCheckpoint == null)
         {
             return;
         }
 
         float dist = Vector3.Distance(transform.position, activeCheckpoint.transform.position);
-        AddReward((prevDist - dist) * distanceRewardScale);
-        prevDist = dist;
+        if (dist < bestDist)
+        {
+            AddReward((bestDist - dist) * distanceRewardScale);
+        }
         CheckGateProgress(dist);
+    }
+
+    private float DrasticMovementPenalty()
+    {
+        float excessRotationRate = rb.angularVelocity.magnitude - rotationRateDeadzone;
+        if (excessRotationRate <= 0f)
+        {
+            return 0f;
+        }
+        return -excessRotationRate * excessRotationRate * rotationRatePenaltyScale;
     }
 
     private void CheckGateProgress(float dist)
@@ -405,6 +430,12 @@ public class TerrainAgentScript : Agent
             return;
         }
 
+        if(IsFlippedOnGround())
+        {
+            Crashed("Flipped");
+            return;
+        }
+
         CheckGroundProbe();
         SetControlSurfecesAngles(pitch, roll, yaw, flap);
         aircraftPhysics.SetThrustPercent(thrustPercent);
@@ -444,7 +475,7 @@ public class TerrainAgentScript : Agent
     private void Crashed(string what)
     {
         stats.RecordCrash(what, rb.linearVelocity.y, rb.linearVelocity.magnitude);
-        SetReward(crashPenalty);
+        AddReward(crashPenalty);
         EndEpisode();
         if (verboseLogging)
         {

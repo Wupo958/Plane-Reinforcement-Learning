@@ -186,12 +186,12 @@ public class MapHeightField
         float mainDistance = MapNoise.DistanceToPolyline(point, mainRidge);
         float mainBand = 1f - MapNoise.SmoothStep(320f, 2150f, mainDistance);
         float mainRidgeNoise = MapNoise.Ridge(x, z, 1f / 1250f, 4, 9.1f + noiseOffsetX, 73.4f + noiseOffsetZ);
-        float mainHeight = mainBand * mainBand * mainRidgeNoise * 455f;
+        float mainHeight = mainBand * mainBand * mainRidgeNoise * 275f;
 
         float northDistance = MapNoise.DistanceToPolyline(point, northRidge);
         float northBand = 1f - MapNoise.SmoothStep(380f, 1650f, northDistance);
         float northRidgeNoise = MapNoise.Ridge(x, z, 1f / 820f, 3, 143.6f + noiseOffsetX, 201.9f + noiseOffsetZ);
-        float northHeight = northBand * northBand * (0.32f + northRidgeNoise * 0.68f) * 425f;
+        float northHeight = northBand * northBand * (0.32f + northRidgeNoise * 0.68f) * 255f;
 
         return Mathf.Max(mainHeight, northHeight);
     }

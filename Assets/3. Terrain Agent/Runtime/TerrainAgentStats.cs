@@ -26,7 +26,7 @@ public class TerrainAgentStats
         statsRecorder.Add("Flight/Altitude", altitude);
     }
 
-    public void EndEpisode(float checkpointAmount, float reassignCount)
+    public void EndEpisode(float checkpointAmount, float reassignCount, float movementPenaltyAmount)
     {
         if (hasFinishedAnEpisode)
         {
@@ -34,9 +34,11 @@ public class TerrainAgentStats
             statsRecorder.Add("Crashes/Ground", RateOfCrashKind("Ground"));
             statsRecorder.Add("Crashes/Building", RateOfCrashKind("Building"));
             statsRecorder.Add("Crashes/Water", RateOfCrashKind("Water"));
+            statsRecorder.Add("Crashes/Flipped", RateOfCrashKind("Flipped"));
             statsRecorder.Add("Task/CheckpointsPerEpisode", checkpointAmount);
             statsRecorder.Add("Task/ReachedAny", RateOfReachingAny(checkpointAmount));
             statsRecorder.Add("Task/ReassignsPerEpisode", reassignCount);
+            statsRecorder.Add("Task/MovementPenaltyPerEpisode", movementPenaltyAmount);
 
             if (crashKind != null)
             {
